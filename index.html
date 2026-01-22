@@ -1,0 +1,538 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Pro Calc + History</title>
+    <style>
+        :root {
+            --bg-color: #e0e5ec;
+            --calc-bg: #e0e5ec;
+            --text-main: #444;
+            --text-secondary: #888;
+            --accent-color: #007bff;
+            --accent-text: #fff;
+            --shadow-light: #ffffff;
+            --shadow-dark: #a3b1c6;
+            --font-family: 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
+            --history-width: 280px;
+        }
+
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+            font-family: var(--font-family);
+        }
+
+        body {
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            min-height: 100vh;
+            background-color: var(--bg-color);
+            overflow-x: hidden; 
+        }
+
+        .history-panel {
+            position: fixed;
+            top: 0;
+            left: 0;
+            height: 100%;
+            width: var(--history-width);
+            background: var(--calc-bg);
+            box-shadow: 5px 0 15px rgba(0,0,0,0.1);
+            transform: translateX(-100%);
+            transition: transform 0.3s ease-in-out;
+            z-index: 100;
+            display: flex;
+            flex-direction: column;
+            padding: 20px;
+        }
+
+        .history-panel.open {
+            transform: translateX(0);
+        }
+
+        .history-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 20px;
+            font-size: 1.2rem;
+            color: var(--text-main);
+            font-weight: bold;
+        }
+
+        .close-history {
+            background: none;
+            border: none;
+            font-size: 1.5rem;
+            cursor: pointer;
+            color: var(--text-secondary);
+            box-shadow: none; 
+        }
+
+        .history-list {
+            flex-grow: 1;
+            overflow-y: auto;
+            display: flex;
+            flex-direction: column;
+            gap: 10px;
+        }
+
+        .history-item {
+            background: var(--bg-color);
+            padding: 10px 15px;
+            border-radius: 10px;
+            box-shadow: 
+                3px 3px 6px var(--shadow-dark), 
+                -3px -3px 6px var(--shadow-light);
+            display: flex;
+            flex-direction: column;
+            align-items: flex-end;
+            cursor: pointer;
+        }
+        
+        .history-item:active {
+            box-shadow: inset 2px 2px 5px var(--shadow-dark), 
+                        inset -2px -2px 5px var(--shadow-light);
+        }
+
+        .history-expression {
+            font-size: 0.8rem;
+            color: var(--text-secondary);
+        }
+        
+        .history-result {
+            font-size: 1.1rem;
+            color: var(--text-main);
+            font-weight: bold;
+        }
+
+       
+        .calculator-grid {
+            position: relative;
+            display: grid;
+            grid-template-columns: repeat(4, 1fr);
+            grid-template-rows: minmax(120px, auto) repeat(5, 80px);
+            gap: 15px;
+            padding: 30px;
+            border-radius: 30px;
+            background-color: var(--calc-bg);
+            box-shadow: 
+                20px 20px 60px var(--shadow-dark), 
+                -20px -20px 60px var(--shadow-light);
+            max-width: 400px;
+            width: 100%;
+            transition: transform 0.3s ease;
+        }
+
+        .history-toggle {
+            position: absolute;
+            top: 20px;
+            left: 20px;
+            background: none;
+            border: none;
+            color: var(--text-secondary);
+            font-size: 1.2rem;
+            cursor: pointer;
+            width: 40px;
+            height: 40px;
+            border-radius: 50%;
+            box-shadow: none;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+        
+        .history-toggle:hover {
+            color: var(--accent-color);
+            background: rgba(0,0,0,0.02);
+        }
+
+        /* The Screen */
+        .output {
+            grid-column: 1 / -1;
+            background: transparent;
+            display: flex;
+            flex-direction: column;
+            align-items: flex-end;
+            justify-content: space-around;
+            padding: 20px;
+            padding-top: 40px; 
+            word-wrap: break-word;
+            word-break: break-all;
+            margin-bottom: 10px;
+            border-radius: 15px;
+            box-shadow: inset 5px 5px 10px var(--shadow-dark), 
+                        inset -5px -5px 10px var(--shadow-light);
+        }
+
+        .previous-operand {
+            color: var(--text-secondary);
+            font-size: 1.2rem;
+            min-height: 24px;
+        }
+
+        .current-operand {
+            color: var(--text-main);
+            font-size: 2.5rem;
+            font-weight: 500;
+        }
+
+        /* Buttons */
+        button {
+            cursor: pointer;
+            font-size: 1.5rem;
+            border: none;
+            outline: none;
+            background-color: var(--calc-bg);
+            color: var(--text-main);
+            border-radius: 50%;
+            box-shadow: 
+                8px 8px 16px var(--shadow-dark), 
+                -8px -8px 16px var(--shadow-light);
+            transition: all 0.1s ease;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            user-select: none;
+        }
+
+        button:active, button.active {
+            box-shadow: inset 6px 6px 10px var(--shadow-dark), 
+                        inset -6px -6px 10px var(--shadow-light);
+            transform: scale(0.98);
+        }
+
+        button:hover {
+            color: var(--accent-color);
+        }
+
+        .span-two {
+            grid-column: span 2;
+            border-radius: 20px;
+        }
+
+        .operator-btn {
+            color: var(--accent-color);
+            font-weight: bold;
+        }
+        
+        .equals-btn {
+            background-color: var(--accent-color);
+            color: var(--accent-text);
+        }
+        .equals-btn:hover {
+            color: var(--accent-text);
+            filter: brightness(1.1);
+        }
+        
+        /* Clear History Btn */
+        .clear-history-btn {
+            margin-top: 20px;
+            width: 100%;
+            border-radius: 15px;
+            font-size: 1rem;
+            height: 50px;
+            color: #ff5e57;
+        }
+
+    </style>
+</head>
+<body>
+
+    <aside class="history-panel" id="historyPanel">
+        <div class="history-header">
+            <span>History</span>
+            <button class="close-history" id="closeHistoryBtn">&times;</button>
+        </div>
+        <div class="history-list" id="historyList">
+            </div>
+        <button class="clear-history-btn" id="clearHistoryBtn">Clear History</button>
+    </aside>
+
+    <div class="calculator-grid">
+        <button class="history-toggle" id="historyToggle">
+            <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"></circle><polyline points="12 6 12 12 16 14"></polyline></svg>
+        </button>
+
+        <div class="output">
+            <div data-previous-operand class="previous-operand"></div>
+            <div data-current-operand class="current-operand"></div>
+        </div>
+        
+        <button data-all-clear class="span-two" style="color: #ff5e57;">AC</button>
+        <button data-delete>DEL</button>
+        <button data-operation class="operator-btn">÷</button>
+        
+        <button data-number>1</button>
+        <button data-number>2</button>
+        <button data-number>3</button>
+        <button data-operation class="operator-btn">*</button>
+        
+        <button data-number>4</button>
+        <button data-number>5</button>
+        <button data-number>6</button>
+        <button data-operation class="operator-btn">+</button>
+        
+        <button data-number>7</button>
+        <button data-number>8</button>
+        <button data-number>9</button>
+        <button data-operation class="operator-btn">-</button>
+        
+        <button data-number>.</button>
+        <button data-number>0</button>
+        <button data-equals class="span-two equals-btn">=</button>
+    </div>
+
+    <script>
+        class Calculator {
+            constructor(previousOperandTextElement, currentOperandTextElement) {
+                this.previousOperandTextElement = previousOperandTextElement;
+                this.currentOperandTextElement = currentOperandTextElement;
+                this.history = []; // store logs here
+                this.clear();
+            }
+
+            clear() {
+                this.currentOperand = '';
+                this.previousOperand = '';
+                this.operation = undefined;
+            }
+
+            delete() {
+                // chop off the last character
+                this.currentOperand = this.currentOperand.toString().slice(0, -1);
+            }
+
+            appendNumber(number) {
+                // don't allow double decimals like 1.2.3
+                if (number === '.' && this.currentOperand.includes('.')) return;
+                this.currentOperand = this.currentOperand.toString() + number.toString();
+            }
+
+            chooseOperation(operation) {
+                if (this.currentOperand === '') return;
+                if (this.previousOperand !== '') {
+                    this.compute();
+                }
+                this.operation = operation;
+                this.previousOperand = this.currentOperand;
+                this.currentOperand = '';
+            }
+
+            compute() {
+                let computation;
+                const prev = parseFloat(this.previousOperand);
+                const current = parseFloat(this.currentOperand);
+                
+                // if users type nonsense, just bail
+                if (isNaN(prev) || isNaN(current)) return;
+                
+                switch (this.operation) {
+                    case '+':
+                        computation = prev + current;
+                        break;
+                    case '-':
+                        computation = prev - current;
+                        break;
+                    case '*':
+                        computation = prev * current;
+                        break;
+                    case '÷':
+                        if (current === 0) {
+                            alert("Nice try, but you can't divide by zero."); 
+                            this.clear();
+                            return;
+                        }
+                        computation = prev / current;
+                        break;
+                    default:
+                        return;
+                }
+
+                // save to history array before we reset the state
+                this.addToHistory(prev, this.operation, current, computation);
+
+                this.currentOperand = computation;
+                this.operation = undefined;
+                this.previousOperand = '';
+            }
+
+            // helper to push data to our history array
+            addToHistory(prev, op, current, result) {
+                const logEntry = {
+                    expression: `${prev} ${op} ${current}`,
+                    result: result
+                };
+                this.history.unshift(logEntry); 
+                updateHistoryUI(this.history); 
+            }
+
+            getDisplayNumber(number) {
+                const stringNumber = number.toString();
+                const integerDigits = parseFloat(stringNumber.split('.')[0]);
+                const decimalDigits = stringNumber.split('.')[1];
+                let integerDisplay;
+                
+                if (isNaN(integerDigits)) {
+                    integerDisplay = '';
+                } else {
+                    integerDisplay = integerDigits.toLocaleString('en', { maximumFractionDigits: 0 });
+                }
+
+                if (decimalDigits != null) {
+                    return `${integerDisplay}.${decimalDigits}`;
+                } else {
+                    return integerDisplay;
+                }
+            }
+
+            updateDisplay() {
+                this.currentOperandTextElement.innerText = 
+                    this.getDisplayNumber(this.currentOperand);
+                
+                if (this.operation != null) {
+                    this.previousOperandTextElement.innerText = 
+                        `${this.getDisplayNumber(this.previousOperand)} ${this.operation}`;
+                } else {
+                    this.previousOperandTextElement.innerText = '';
+                }
+            }
+        }
+
+        // --- DOM ELEMENTS ---
+        const numberButtons = document.querySelectorAll('[data-number]');
+        const operationButtons = document.querySelectorAll('[data-operation]');
+        const equalsButton = document.querySelector('[data-equals]');
+        const deleteButton = document.querySelector('[data-delete]');
+        const allClearButton = document.querySelector('[data-all-clear]');
+        const previousOperandTextElement = document.querySelector('[data-previous-operand]');
+        const currentOperandTextElement = document.querySelector('[data-current-operand]');
+        
+        // History UI elements
+        const historyPanel = document.getElementById('historyPanel');
+        const historyToggle = document.getElementById('historyToggle');
+        const closeHistoryBtn = document.getElementById('closeHistoryBtn');
+        const historyList = document.getElementById('historyList');
+        const clearHistoryBtn = document.getElementById('clearHistoryBtn');
+
+        // init the calculator
+        const calculator = new Calculator(previousOperandTextElement, currentOperandTextElement);
+
+        // --- CLICK EVENTS ---
+        
+        numberButtons.forEach(button => {
+            button.addEventListener('click', () => {
+                calculator.appendNumber(button.innerText);
+                calculator.updateDisplay();
+            });
+        });
+
+        operationButtons.forEach(button => {
+            button.addEventListener('click', () => {
+                calculator.chooseOperation(button.innerText);
+                calculator.updateDisplay();
+            });
+        });
+
+        equalsButton.addEventListener('click', button => {
+            calculator.compute();
+            calculator.updateDisplay();
+        });
+
+        allClearButton.addEventListener('click', button => {
+            calculator.clear();
+            calculator.updateDisplay();
+        });
+
+        deleteButton.addEventListener('click', button => {
+            calculator.delete();
+            calculator.updateDisplay();
+        });
+
+        // --- HISTORY PANEL LOGIC ---
+
+        function updateHistoryUI(historyArray) {
+            historyList.innerHTML = ''; 
+            
+            historyArray.forEach(item => {
+                const div = document.createElement('div');
+                div.classList.add('history-item');
+                div.innerHTML = `
+                    <div class="history-expression">${item.expression}</div>
+                    <div class="history-result">= ${item.result}</div>
+                `;
+                historyList.appendChild(div);
+            });
+        }
+
+        historyToggle.addEventListener('click', () => {
+            historyPanel.classList.add('open');
+        });
+
+        closeHistoryBtn.addEventListener('click', () => {
+            historyPanel.classList.remove('open');
+        });
+
+        // clear the list
+        clearHistoryBtn.addEventListener('click', () => {
+            calculator.history = [];
+            updateHistoryUI([]);
+        });
+
+        document.addEventListener('click', (e) => {
+            if (!historyPanel.contains(e.target) && !historyToggle.contains(e.target) && historyPanel.classList.contains('open')) {
+                historyPanel.classList.remove('open');
+            }
+        });
+
+        document.addEventListener('keydown', (e) => {
+            let key = e.key;
+
+            if (key === '/') key = '÷';
+            if (key === 'Enter') key = '=';
+            if (key === 'Backspace') key = 'DEL';
+            if (key === 'Escape') key = 'AC';
+
+            if ((key >= 0 && key <= 9) || key === '.') {
+                calculator.appendNumber(key);
+                calculator.updateDisplay();
+                animateButton(key);
+            }
+            if (key === '+' || key === '-' || key === '*' || key === '÷') {
+                calculator.chooseOperation(key);
+                calculator.updateDisplay();
+                animateButton(key);
+            }
+            if (key === '=' || key === 'Enter') {
+                calculator.compute();
+                calculator.updateDisplay();
+              animateButton('=');
+            }
+            if (key === 'DEL' || key === 'Backspace') {
+                calculator.delete();
+                calculator.updateDisplay();
+                animateButton('DEL');
+            }
+            if (key === 'AC' || key === 'Escape') {
+                calculator.clear();
+                calculator.updateDisplay();
+                animateButton('AC');
+            }
+        });
+
+       
+        function animateButton(key) {
+            const buttons = Array.from(document.querySelectorAll('button'));
+            const btn = buttons.find(b => b.innerText === key);
+            if(btn) {
+                btn.classList.add('active');
+                setTimeout(() => btn.classList.remove('active'), 100);
+            }
+        }
+    </script>
+</body>
+</html>
